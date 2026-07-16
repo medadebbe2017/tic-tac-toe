@@ -4,7 +4,7 @@ A Tic-Tac-Toe game I built in C++ for practice with classes and game logic. The 
 
 ## Play it
 
-[Live demo](https://medadebbe2017.github.io/tictactoe/tictactoe.html)
+[Live demo](https://medadebbe2017.github.io/tictactoe/)
 
 ## Features
 
