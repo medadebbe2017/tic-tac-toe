@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>tictactoe.cpp — Mohamed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060b10;--card:#0a1520;--accent:#00f5c4;--red:#ff4f6a;
+  --yellow:#f5c842;--text:#d4e4f0;--muted:rgba(212,228,240,.52);
+  --border:rgba(0,245,196,.10);--mono:'JetBrains Mono',monospace;--display:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--mono);
+  min-height:100vh;overflow-x:hidden;
+  background-image:linear-gradient(rgba(0,245,196,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,196,.025) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+#particle-canvas{position:fixed;inset:0;pointer-events:none;z-index:999;}
+
+/* ── Layout ── */
+.page{max-width:980px;margin:0 auto;padding:20px 16px 48px;}
+
+/* ── Header ── */
+header{margin-bottom:20px;}
+.file-badge{display:inline-block;background:rgba(0,245,196,.07);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:.68rem;color:var(--accent);letter-spacing:.12em;margin-bottom:10px;}
+h1{font-family:var(--display);font-size:clamp(1.5rem,4.5vw,2.4rem);font-weight:800;letter-spacing:-.02em;line-height:1.1;}
+h1 span{color:var(--accent);}
+.subtitle{margin-top:6px;font-size:.75rem;color:var(--muted);line-height:1.5;}
+
+/* ── Portfolio buttons ── */
+.portfolio-btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.port-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 16px;border-radius:8px;font-family:var(--mono);
+  font-size:.72rem;letter-spacing:.06em;cursor:pointer;
+  transition:all .2s;text-decoration:none;border:none;
+}
+.port-btn-primary{background:var(--accent);color:#060b10;font-weight:700;}
+.port-btn-primary:hover{background:#00ddb0;box-shadow:0 0 18px rgba(0,245,196,.4);}
+.port-btn-secondary{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.port-btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:8px 18px;font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;color:var(--muted);cursor:pointer;transition:color .2s,border-color .2s;margin-bottom:-1px;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn:hover:not(.active){color:var(--text);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* ── Card ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;}
+
+/* ── Name screen ── */
+#name-screen{max-width:440px;margin:0 auto;}
+.name-input{
+  width:100%;background:rgba(0,245,196,.04);border:1px solid rgba(0,245,196,.12);
+  border-radius:10px;padding:10px 14px;font-family:var(--mono);font-size:16px;
+  color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.name-input::placeholder{color:var(--muted);}
+.name-input:focus{border-color:rgba(0,245,196,.5);box-shadow:0 0 12px rgba(0,245,196,.12);}
+.name-input.o-input:focus{border-color:rgba(255,79,106,.5);box-shadow:0 0 12px rgba(255,79,106,.12);}
+.name-input.error{border-color:rgba(255,79,106,.7);}
+.input-label{display:block;font-size:.66rem;letter-spacing:.12em;margin-bottom:5px;}
+
+/* ── Buttons ── */
+.btn{width:100%;padding:11px 20px;border-radius:10px;font-family:var(--mono);font-size:.76rem;letter-spacing:.08em;cursor:pointer;transition:all .2s;border:none;}
+.btn-primary{background:var(--accent);color:#060b10;font-weight:700;}
+.btn-primary:hover{background:#00ddb0;box-shadow:0 0 22px rgba(0,245,196,.35);}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-row{display:flex;gap:10px;}
+.btn-row .btn{flex:1;}
+
+/* ── Game layout ── */
+.game-layout{display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start;}
+@media(max-width:640px){
+  .game-layout{grid-template-columns:1fr;}
+  .board-wrap{max-width:320px !important;}
+}
+
+/* ── Status line ── */
+.status-line{
+  display:flex;align-items:center;gap:8px;margin-bottom:14px;
+  padding:8px 14px;background:rgba(0,245,196,.04);
+  border:1px solid var(--border);border-radius:9px;font-size:.74rem;
+}
+.status-prompt{color:var(--accent);flex-shrink:0;}
+#status-text{color:var(--text);flex:1;font-size:.72rem;}
+.cursor{width:7px;height:13px;background:var(--accent);border-radius:1px;animation:blink .9s step-end infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── Board ── */
+.board-wrap{position:relative;aspect-ratio:1;width:100%;max-width:360px;margin:0 auto;}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;height:100%;}
+.cell{
+  background:rgba(255,255,255,.02);border:1px solid rgba(0,245,196,.08);
+  border-radius:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:clamp(1.8rem,8vw,3rem);font-weight:800;
+  transition:background .15s,border-color .2s,transform .1s,box-shadow .2s;
+  user-select:none;
+}
+.cell:hover:not(.taken){border-color:rgba(0,245,196,.3);transform:scale(1.03);box-shadow:0 0 18px rgba(0,245,196,.1);background:rgba(0,245,196,.04);}
+.cell.taken{cursor:default;}
+.cell.x-cell{color:var(--accent);text-shadow:0 0 18px rgba(0,245,196,.8),0 0 36px rgba(0,245,196,.4);border-color:rgba(0,245,196,.2);box-shadow:inset 0 0 24px rgba(0,245,196,.05);}
+.cell.o-cell{color:var(--red);text-shadow:0 0 18px rgba(255,79,106,.8),0 0 36px rgba(255,79,106,.4);border-color:rgba(255,79,106,.2);box-shadow:inset 0 0 24px rgba(255,79,106,.05);}
+.cell.win-cell.x-cell{background:rgba(0,245,196,.08);border-color:rgba(0,245,196,.6);animation:pulse-cyan 1s ease-in-out infinite alternate;}
+.cell.win-cell.o-cell{background:rgba(255,79,106,.08);border-color:rgba(255,79,106,.6);animation:pulse-red 1s ease-in-out infinite alternate;}
+@keyframes pulse-cyan{from{box-shadow:0 0 18px rgba(0,245,196,.3),inset 0 0 18px rgba(0,245,196,.05);}to{box-shadow:0 0 50px rgba(0,245,196,.8),inset 0 0 36px rgba(0,245,196,.15);}}
+@keyframes pulse-red{from{box-shadow:0 0 18px rgba(255,79,106,.3),inset 0 0 18px rgba(255,79,106,.05);}to{box-shadow:0 0 50px rgba(255,79,106,.8),inset 0 0 36px rgba(255,79,106,.15);}}
+.cell .mark{display:inline-block;animation:pop .2s cubic-bezier(.17,.67,.45,1.6);}
+@keyframes pop{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+/* ── Win line ── */
+#win-line-svg{position:absolute;inset:0;pointer-events:none;overflow:visible;}
+#win-line-path{stroke:var(--accent);stroke-width:3;stroke-linecap:round;fill:none;filter:drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 16px var(--accent));stroke-dasharray:600;stroke-dashoffset:600;transition:stroke-dashoffset .5s cubic-bezier(.4,0,.2,1);}
+#win-line-path.drawn{stroke-dashoffset:0;}
+#win-line-path.red-line{stroke:var(--red);filter:drop-shadow(0 0 6px var(--red)) drop-shadow(0 0 16px var(--red));}
+
+/* ── Compact scoreboard ── */
+.scoreboard{
+  background:rgba(0,245,196,.03);border:1px solid var(--border);
+  border-radius:12px;padding:12px 16px;margin-bottom:12px;
+}
+.score-row{
+  display:flex;align-items:center;justify-content:center;
+  gap:8px;font-size:.78rem;flex-wrap:wrap;text-align:center;
+}
+.score-chunk{display:flex;align-items:center;gap:5px;}
+.score-name{font-weight:700;font-size:.75rem;}
+.score-name.x-name{color:var(--accent);}
+.score-name.o-name{color:var(--red);}
+.score-num{font-family:var(--display);font-size:1.3rem;font-weight:800;line-height:1;}
+.score-divider{color:var(--border);font-size:1rem;margin:0 2px;}
+
+/* ── Turn badges ── */
+.turn-indicator{display:flex;gap:8px;margin-bottom:12px;}
+.player-badge{flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);text-align:center;font-size:.65rem;color:var(--muted);transition:all .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.player-badge.active-x{background:rgba(0,245,196,.1);border-color:rgba(0,245,196,.5);color:var(--accent);box-shadow:0 0 10px rgba(0,245,196,.2);}
+.player-badge.active-o{background:rgba(255,79,106,.1);border-color:rgba(255,79,106,.5);color:var(--red);box-shadow:0 0 10px rgba(255,79,106,.2);}
+
+.rounds-badge{text-align:center;font-size:.67rem;color:var(--muted);margin-bottom:10px;}
+
+/* ── Source tab ── */
+.source-meta{font-size:.74rem;color:var(--muted);}
+.source-meta span{color:var(--accent);}
+.compile-box{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:.74rem;}
+.compile-box .clabel{color:var(--muted);margin-bottom:5px;font-size:.64rem;letter-spacing:.1em;}
+.compile-cmd{color:var(--yellow);}
+.compile-run{color:var(--accent);}
+pre#cpp-source{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:16px;padding:22px;overflow-x:auto;font-size:.72rem;line-height:1.75;color:var(--text);tab-size:4;white-space:pre;}
+.kw{color:#7eb8f7;}.ty{color:var(--yellow);}.cm{color:var(--muted);font-style:italic;}.nm{color:#f5c842;}
+</style>
+</head>
+<body>
+<canvas id="particle-canvas"></canvas>
+
+<div class="page">
+  <!-- Header -->
+  <header>
+    <div class="file-badge">// project</div>
+    <h1>tic<span>tac</span>toe<span>.cpp</span></h1>
+    <p class="subtitle">A C++ inspired Tic-Tac-Toe game with two-player gameplay,<br>win detection, score tracking, and session reset.</p>
+    <div class="portfolio-btns">
+      <a href="https://YOUR_USERNAME.github.io/tictactoe/tictactoe.html" class="port-btn port-btn-primary" target="_blank">
+        ▶ Live Demo
+      </a>
+      <a href="https://github.com/YOUR_USERNAME/tictactoe" class="port-btn port-btn-secondary" target="_blank">
+        { } View Code
+      </a>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="game">game.exe</button>
+    <button class="tab-btn" data-tab="source">source.cpp</button>
+  </div>
+
+  <!-- GAME TAB -->
+  <div id="tab-game" class="tab-panel active">
+
+    <!-- Name screen -->
+    <div id="name-screen" class="card">
+      <div class="file-badge" style="margin-bottom:12px;">// init_players()</div>
+      <p style="font-size:.75rem;color:var(--muted);margin-bottom:18px;">Enter player names or leave blank to use defaults.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;">
+        <div>
+          <label class="input-label" style="color:var(--accent);">player_X</label>
+          <input id="input-x" class="name-input" type="text" maxlength="16" placeholder="Player X">
+        </div>
+        <div>
+          <label class="input-label" style="color:var(--red);">player_O</label>
+          <input id="input-o" class="name-input o-input" type="text" maxlength="16" placeholder="Player O">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-start">start_game()</button>
+    </div>
+
+    <!-- Game -->
+    <div id="game-layout" class="game-layout" style="display:none;">
+
+      <!-- Board card -->
+      <div class="card">
+        <div class="status-line">
+          <span class="status-prompt">&gt;&gt;</span>
+          <span id="status-text">turn: Player X  |  move #1</span>
+          <span class="cursor"></span>
+        </div>
+        <div class="board-wrap">
+          <div class="board" id="board">
+            <div class="cell" data-i="0"></div>
+            <div class="cell" data-i="1"></div>
+            <div class="cell" data-i="2"></div>
+            <div class="cell" data-i="3"></div>
+            <div class="cell" data-i="4"></div>
+            <div class="cell" data-i="5"></div>
+            <div class="cell" data-i="6"></div>
+            <div class="cell" data-i="7"></div>
+            <div class="cell" data-i="8"></div>
+          </div>
+          <svg id="win-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path id="win-line-path" d=""/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+
+        <!-- Compact scoreboard -->
+        <div class="scoreboard">
+          <div class="score-row">
+            <div class="score-chunk">
+              <span class="score-name x-name" id="label-x">Player X</span>
+              <span class="score-num" id="score-x">0</span>
+            </div>
+            <span class="score-divider">|</span>
+            <div class="score-chunk">
+              <span class="score-name o-name" id="label-o">Player O</span>
+              <span class="score-num" id="score-o">0</span>
+            </div>
+            <span class="score-divider">|</span>
+            <div class="score-chunk">
+              <span class="score-name" style="color:var(--muted)">Draw</span>
+              <span class="score-num" id="score-d">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Turn badges -->
+        <div class="turn-indicator">
+          <div class="player-badge active-x" id="badge-x">Player X</div>
+          <div class="player-badge" id="badge-o">Player O</div>
+        </div>
+
+        <div class="rounds-badge">rounds played: <span id="rounds">0</span></div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-restart">restart()</button>
+          <button class="btn btn-secondary" id="btn-new">new_session()</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SOURCE TAB -->
+  <div id="tab-source" class="tab-panel">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+        <div>
+          <div class="file-badge">tictactoe.cpp</div>
+          <p class="source-meta" style="margin-top:7px;"><span>C++17</span> &nbsp;·&nbsp; ~160 lines &nbsp;·&nbsp; classes: Board · ScoreTracker · Game</p>
+        </div>
+      </div>
+      <div class="compile-box">
+        <div class="clabel">// COMPILE &amp; RUN</div>
+        <div class="compile-cmd">$ g++ -std=c++17 -o tictactoe tictactoe.cpp</div>
+        <div class="compile-run">$ ./tictactoe</div>
+      </div>
+      <pre id="cpp-source"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Particles ───────────────────────────────────────────
+const canvas = document.getElementById('particle-canvas');
+const ctx    = canvas.getContext('2d');
+let particles = [], animFrame = null;
+function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+resizeCanvas(); window.addEventListener('resize',resizeCanvas);
+
+function launchParticles(color){
+  const cx=canvas.width/2, cy=canvas.height/2;
+  const colors=color==='cyan'
+    ?['#00f5c4','#00ddb0','#7fffd4','#a0ffe8','#00ff99','#00e5b5']
+    :['#ff4f6a','#ff2244','#ff8fa0','#ff1155','#ff6680','#ff3355'];
+  for(let i=0;i<180;i++){
+    const angle=Math.random()*Math.PI*2, speed=5+Math.random()*16;
+    particles.push({
+      x:cx,y:cy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-8,
+      size:4+Math.random()*9,color:colors[Math.floor(Math.random()*colors.length)],
+      alpha:1,decay:.01+Math.random()*.016,gravity:.45+Math.random()*.3,
+      rotation:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.25,
+      shape:Math.random()<.55?'rect':'circle'
+    });
+  }
+  if(!animFrame)renderParticles();
+}
+function renderParticles(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles=particles.filter(p=>p.alpha>.02);
+  for(const p of particles){
+    ctx.save();ctx.globalAlpha=p.alpha;ctx.fillStyle=p.color;
+    ctx.shadowColor=p.color;ctx.shadowBlur=8;
+    ctx.translate(p.x,p.y);ctx.rotate(p.rotation);
+    if(p.shape==='rect'){ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*.45);}
+    else{ctx.beginPath();ctx.arc(0,0,p.size/2,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+    p.x+=p.vx;p.y+=p.vy;p.vy+=p.gravity;p.vx*=.98;
+    p.alpha-=p.decay;p.rotation+=p.spin;
+  }
+  if(particles.length>0){animFrame=requestAnimationFrame(renderParticles);}
+  else{animFrame=null;ctx.clearRect(0,0,canvas.width,canvas.height);}
+}
+
+// ── Game logic ──────────────────────────────────────────
+const WIN_LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+let cells=Array(9).fill(null),currentPlayer='X',moveCount=0,gameOver=false;
+let nameX='Player X',nameO='Player O';
+let scoreX=0,scoreO=0,scoreD=0,rounds=0;
+
+const cellEls=document.querySelectorAll('.cell');
+const statusEl=document.getElementById('status-text');
+const badgeX=document.getElementById('badge-x');
+const badgeO=document.getElementById('badge-o');
+const winPath=document.getElementById('win-line-path');
+
+function updateStatus(msg){statusEl.textContent=msg;}
+function updateTurnBadges(){
+  badgeX.className='player-badge'+(currentPlayer==='X'?' active-x':'');
+  badgeO.className='player-badge'+(currentPlayer==='O'?' active-o':'');
+  badgeX.textContent=nameX; badgeO.textContent=nameO;
+}
+function updateScoreDisplay(){
+  document.getElementById('score-x').textContent=scoreX;
+  document.getElementById('score-o').textContent=scoreO;
+  document.getElementById('score-d').textContent=scoreD;
+  document.getElementById('rounds').textContent=rounds;
+}
+function checkResult(){
+  for(const[a,b,c]of WIN_LINES)
+    if(cells[a]&&cells[a]===cells[b]&&cells[a]===cells[c])
+      return{result:'win',player:cells[a],line:[a,b,c]};
+  return moveCount===9?{result:'draw'}:{result:'ongoing'};
+}
+
+// Win line: compute real pixel centers then convert to SVG % coords
+function drawWinLine(a,b,c,player){
+  const boardEl=document.getElementById('board');
+  const boardRect=boardEl.getBoundingClientRect();
+  const svgEl=document.getElementById('win-line-svg');
+  const svgRect=svgEl.getBoundingClientRect();
+
+  function cellCenter(idx){
+    const cellEl=cellEls[idx];
+    const r=cellEl.getBoundingClientRect();
+    // center of cell relative to SVG element
+    const x=((r.left+r.width/2)-svgRect.left)/svgRect.width*100;
+    const y=((r.top+r.height/2)-svgRect.top)/svgRect.height*100;
+    return{x,y};
+  }
+  const p1=cellCenter(a), p2=cellCenter(c);
+  winPath.setAttribute('d',`M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`);
+  winPath.classList.toggle('red-line',player==='O');
+  requestAnimationFrame(()=>winPath.classList.add('drawn'));
+}
+
+function clearWinLine(){
+  winPath.classList.remove('drawn','red-line');
+  winPath.setAttribute('d','');
+}
+
+cellEls.forEach(cell=>{
+  cell.addEventListener('click',()=>{
+    const i=parseInt(cell.dataset.i);
+    if(gameOver||cells[i])return;
+    cells[i]=currentPlayer; moveCount++;
+    cell.classList.add('taken',currentPlayer==='X'?'x-cell':'o-cell');
+    cell.innerHTML=`<span class="mark">${currentPlayer}</span>`;
+    const res=checkResult();
+    if(res.result==='win'){
+      gameOver=true; rounds++;
+      currentPlayer==='X'?scoreX++:scoreO++;
+      updateScoreDisplay();
+      res.line.forEach(idx=>cellEls[idx].classList.add('win-cell'));
+      drawWinLine(...res.line,res.player);
+      const winner=res.player==='X'?nameX:nameO;
+      updateStatus(`RESULT: ${winner} wins! — restart()`);
+      badgeX.className='player-badge'; badgeO.className='player-badge';
+      setTimeout(()=>launchParticles(res.player==='X'?'cyan':'red'),350);
+    }else if(res.result==='draw'){
+      gameOver=true; rounds++; scoreD++;
+      updateScoreDisplay();
+      updateStatus('RESULT: draw — board full. restart()');
+      badgeX.className='player-badge'; badgeO.className='player-badge';
+    }else{
+      currentPlayer=currentPlayer==='X'?'O':'X';
+      updateTurnBadges();
+      updateStatus(`turn: ${currentPlayer==='X'?nameX:nameO}  |  move #${moveCount+1}`);
+    }
+  });
+});
+
+function restartGame(){
+  cells=Array(9).fill(null); currentPlayer='X'; moveCount=0; gameOver=false;
+  cellEls.forEach(c=>{c.className='cell';c.innerHTML='';});
+  clearWinLine(); updateTurnBadges();
+  updateStatus(`turn: ${nameX}  |  move #1`);
+}
+function newSession(){
+  scoreX=0;scoreO=0;scoreD=0;rounds=0;
+  updateScoreDisplay(); restartGame();
+  document.getElementById('game-layout').style.display='none';
+  document.getElementById('name-screen').style.display='block';
+  document.getElementById('input-x').value='';
+  document.getElementById('input-o').value='';
+}
+document.getElementById('btn-restart').addEventListener('click',restartGame);
+document.getElementById('btn-new').addEventListener('click',newSession);
+
+// Start screen — names optional, same-name check
+document.getElementById('btn-start').addEventListener('click',()=>{
+  const rawX=document.getElementById('input-x').value.trim();
+  const rawO=document.getElementById('input-o').value.trim();
+  const inX=document.getElementById('input-x');
+  const inO=document.getElementById('input-o');
+  inX.classList.remove('error'); inO.classList.remove('error');
+
+  if(rawX && rawO && rawX.toLowerCase()===rawO.toLowerCase()){
+    inO.classList.add('error'); inO.focus(); return;
+  }
+
+  nameX=rawX||'Player X'; nameO=rawO||'Player O';
+  document.getElementById('label-x').textContent=nameX;
+  document.getElementById('label-o').textContent=nameO;
+  document.getElementById('name-screen').style.display='none';
+  document.getElementById('game-layout').style.display='grid';
+  updateTurnBadges();
+  updateStatus(`turn: ${nameX}  |  move #1`);
+});
+['input-x','input-o'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown',e=>{
+    if(e.key==='Enter')document.getElementById('btn-start').click();
+  });
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── C++ source ──────────────────────────────────────────
+const cppSource=`// ============================================================
+//  tictactoe.cpp  -  Tic-Tac-Toe Game Engine
+//  Author : Mohamed
+//  Build  : g++ -std=c++17 -o tictactoe tictactoe.cpp
+// ============================================================
+
+#include <iostream>
+#include <array>
+#include <limits>
+
+enum class Cell { Empty, X, O };
+enum class GameResult { Ongoing, WinX, WinO, Draw };
+
+struct WinLine { int a, b, c; bool valid; };
+
+class Board {
+public:
+    static constexpr int SIZE = 9;
+    static constexpr std::array<std::array<int,3>, 8> WIN_LINES = {{
+        {0,1,2}, {3,4,5}, {6,7,8},
+        {0,3,6}, {1,4,7}, {2,5,8},
+        {0,4,8}, {2,4,6}
+    }};
+
+    Board() { reset(); }
+
+    void reset() { cells_.fill(Cell::Empty); move_count_ = 0; }
+
+    bool place(int index, Cell player) {
+        if (index < 0 || index >= SIZE) return false;
+        if (cells_[index] != Cell::Empty) return false;
+        cells_[index] = player;
+        ++move_count_;
+        return true;
+    }
+
+    GameResult result() const {
+        WinLine w = winning_line();
+        if (w.valid)
+            return (cells_[w.a] == Cell::X) ? GameResult::WinX : GameResult::WinO;
+        if (move_count_ == SIZE) return GameResult::Draw;
+        return GameResult::Ongoing;
+    }
+
+    WinLine winning_line() const {
+        for (auto& line : WIN_LINES) {
+            Cell c = cells_[line[0]];
+            if (c != Cell::Empty &&
+                c == cells_[line[1]] &&
+                c == cells_[line[2]])
+                return { line[0], line[1], line[2], true };
+        }
+        return { 0, 0, 0, false };
+    }
+
+    int move_count() const { return move_count_; }
+
+private:
+    std::array<Cell, SIZE> cells_;
+    int move_count_;
+};
+
+struct ScoreTracker {
+    int wins_x=0, wins_o=0, draws=0, rounds=0;
+    void record(GameResult r) {
+        ++rounds;
+        if      (r == GameResult::WinX) ++wins_x;
+        else if (r == GameResult::WinO) ++wins_o;
+        else if (r == GameResult::Draw) ++draws;
+    }
+};
+
+class Game {
+public:
+    Game(ScoreTracker& t) : tracker_(t) {
+        board_.reset(); current_player_ = Cell::X;
+    }
+    void run() {
+        while (true) {
+            int move = get_move();
+            if (move == -1) return;
+            if (!board_.place(move, current_player_)) continue;
+            GameResult r = board_.result();
+            if (r != GameResult::Ongoing) { tracker_.record(r); return; }
+            current_player_ = (current_player_==Cell::X) ? Cell::O : Cell::X;
+        }
+    }
+private:
+    Board board_; ScoreTracker& tracker_; Cell current_player_;
+    int get_move() const {
+        int input; std::cin >> input;
+        return (input == 0) ? -1 : input - 1;
+    }
+};
+
+int main() {
+    ScoreTracker tracker; char again = 'y';
+    while (again=='y' || again=='Y') {
+        Game(tracker).run();
+        std::cout << "play again? [y/n]: ";
+        std::cin >> again;
+    }
+    return 0;
+}`;
+
+function highlight(code){
+  return code
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/(\/\/[^\n]*)/g,'<span class="cm">$1</span>')
+    .replace(/\b(class|struct|enum|public|private|static|constexpr|const|return|if|else|while|for|true|false|void|int|char|bool|auto|break|continue)\b/g,'<span class="kw">$1</span>')
+    .replace(/\b(Cell|GameResult|WinLine|Board|ScoreTracker|Game)\b/g,'<span class="ty">$1</span>')
+    .replace(/\b(\d+)\b/g,'<span class="nm">$1</span>');
+}
+document.getElementById('cpp-source').innerHTML=highlight(cppSource);
+</script>
+</body>
+</html>
